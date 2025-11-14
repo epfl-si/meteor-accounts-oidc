@@ -8,13 +8,6 @@ type OIDC = {
    * @locus client
    */
   login (...args: any[]) : void
-  /**
-   * Start the logout process.
-   * Does not return.
-   *
-   * @locus client
-   */
-  logout () : void
 };
 
 export type LoginStyleString = 'popup' | 'redirect';
