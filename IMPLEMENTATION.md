@@ -18,8 +18,8 @@ This Atmosphere package does
 
 - TypeScript, thanks to `api.use("typescript")`
 - provide (isometric) TypeScript types, the [`zodern:meteor-types`](https://github.com/zodern/meteor-types) way
-- use all the bells and whistles of modern JavaScript; first and foremost `async` / `await`
-- build on top of `accounts-oauth` and `oauth2`, in exactly the same way that [OpenID-Connect is compatible with OAuth2](https://openid.net/developers/how-connect-works/).
+- use all the bells and whistles of modern Meteor and JavaScript; first and foremost `async` / `await`
+- rely on the built-in `accounts-oauth` and `oauth2` Meteor packages, in exactly the same way that [OpenID-Connect is compatible with OAuth2](https://openid.net/developers/how-connect-works/).
 
 This Atmosphere package **does not**
 
@@ -77,7 +77,13 @@ In conclusion:
 - The good: **security is a core feature** of the Meteor OAuth framework — not removeable, not to be provided by IdP-specific implementations such as this here package — and it has been that way across decades, and protocol major versions, and `loginStyle`s. **If it works, you can trust it.**
 - The ugly: near as I can tell, **almost none of that stuff is documented anywhere**; it was all figured out through reverse-engineering.
 
-### Calls and Callbacks
+### `meteor.loginServiceConfiguration` vs. the OIDC client secret
+
+It is [well-known](https://docs.meteor.com/api/accounts#service-configuration) that whatever one puts in the [Meteor settings](https://docs.meteor.com/api/meteor.html#Meteor-settings) under `packages["service-configuration"]` gets upserted into the `meteor_accounts_loginServiceConfiguration` Mongo collection, which is auto-published (regardless of whether the `autopublish` package is in play — which it shouldn't, once once your application is headed for production).
+
+What is less well-known, however, is that [the `meteor.loginServiceConfiguration` publication omits the `secret` top-level key](https://github.com/search?q=repo%3Ameteor%2Fmeteor%20%22Publish%20all%20login%20service%20configuration%20fields%20other%20than%20secret%22&type=code). Placing the OpenID-Connect client secret as `.secret.clientSecret`, rather than the top level of the service configuration, thus results in it being concealed from the Meteor client as it should.
+
+## Calls and Callbacks
 
 Both client- and server-side code in `epfl:accounts-oidc` mesh with the polymorphic implementation of Meteor's accounts and OAuth subsystems, by calling the relevant (albeit often poorly documented, if at all) registration and action functions. Details (sometimes) appear next to the call sites in the source code.
 
@@ -85,11 +91,12 @@ Note that a bunch of these APIs are both indispensable *and* private, and there 
 
 Also note that these same APIs use callbacks a lot for continuation passing, like they are stuck in 2011, (which they kind of are.) As seen in § “Modern Package” above, we hoist that to `async` style in our callers wherever (and as soon as) possible.
 
-### `meteor.loginServiceConfiguration` vs. the OIDC client secret
+## OpenID-Connect Specific Behavior
 
-It is [well-known](https://docs.meteor.com/api/accounts#service-configuration) that whatever one puts in the [Meteor settings](https://docs.meteor.com/api/meteor.html#Meteor-settings) under `packages["service-configuration"]` gets upserted into the `meteor_accounts_loginServiceConfiguration` Mongo collection, which is auto-published (regardless of whether the `autopublish` package is in play — which it shouldn't, once once your application is headed for production).
+The behavior of OpenID-Connect diverges from OAuth's in two fundamental places in the [timing diagram](https://darutk.medium.com/diagrams-of-all-the-openid-connect-flows-6968e3990660):
 
-What is less well-known, however, is that [the `meteor.loginServiceConfiguration` publication omits the `secret` top-level key](https://github.com/search?q=repo%3Ameteor%2Fmeteor%20%22Publish%20all%20login%20service%20configuration%20fields%20other%20than%20secret%22&type=code). Placing the OpenID-Connect client secret as `.secret.clientSecret`, rather than the top level of the service configuration, thus results in it being concealed from the Meteor client as it should.
+- at the very beginning, i.e. at configuration-time: `epfl:accounts-oidc` supports (and even recommends) using the IdP's `.well-known/openid-configuration` as a configuration source, rather than having to set every single OAuth endpoint by hand in the configuration (which it does support too, FWIW). This code lives in `config.ts`;
+- at the very end, i.e. once the OAuth2 token exchange completes: `accounts-oidc-server.ts` knows how to decode the JWT ID token that it receives in the same exchange. It also follows up with a call to [the UserInfo endpoint](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo).
 
 # References
 

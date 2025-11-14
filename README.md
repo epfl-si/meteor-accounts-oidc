@@ -1,21 +1,31 @@
 # `epfl:accounts-oidc` Atmosphere package
 
-Plug of the popular OpenID-Connect (OIDC) identity providers (IdP) into your Meteor application to authenticate users.
+Connect your Meteor application to an identity provider (IdP) using the modern and popular OpenID-Connect (OIDC) protocol.
 
 ## Features
 
 - Fully compatible with the [Meteor accounts API](https://docs.meteor.com/api/accounts)
-- Supports *only* the OIDC “Authorization Code Flow”, in both [“popup” and “redirect” flavors](https://docs.meteor.com/api/accounts#popup-vs-redirect-flow)¹
+- Supports the OIDC “Authorization Code Flow”, in both [“popup” and “redirect” flavors](https://docs.meteor.com/api/accounts#popup-vs-redirect-flow)¹
 
 ¹ It is a bit unfortunate that the Meteor terminology sometimes uses “popup flow” and “redirect flow”, while they are one and the same flow in the OpenID-Connect sense 🤷‍♂️ In this documentation, we use “login style” instead.
 
+## Planned Features
+
+- PKCE ([RFC7636](https://datatracker.ietf.org/doc/html/rfc7636))
+
 ## Non-features
 
-`epfl:accounts-oidc` assumes that the *server*, not the browser, will be [querying](https://openid.net/specs/openid-connect-core-1_0.html#TokenRequest) the IdP to redeem the token at the end of a successful authentication. That is, you should *not* set “single-page Web app” mode in Entra, in spite of what you believe you know about Meteor and single-page Web apps. This is *not* the same approach as say, [`@epfl-si/react-appauth`](https://www.npmjs.com/package/@epfl-si/react-appauth).
+- Support for Meteor versions prior to 3
+- “Older” OpenID-Connect or OAuth flows (implicit, hybrid, and so on)
+- Client-side OAuth token redeeming. `epfl:accounts-oidc` assumes that the *server*, not the browser, will be [fetching the tokens from the IdP](https://openid.net/specs/openid-connect-core-1_0.html#TokenRequest) at the end of a successful authentication. That is, you should *not* set “single-page Web app” mode in Entra, in spite of what you believe you know about Meteor and single-page Web apps. This is in contrast to, say, [`@epfl-si/react-appauth`](https://www.npmjs.com/package/@epfl-si/react-appauth).
 
 # Install
 
-`meteor add epfl:accounts-oidc`
+In your Meteor v3 project, say
+
+```
+meteor add epfl:accounts-oidc
+```
 
 # Configure the Identity Provider
 
@@ -67,6 +77,10 @@ Do *one* of the following:
    ```
 
 ## Use in your app
+
+There is a single entry point for your code, `OIDC.login()`, that takes no arguments. (There is no logout function; use `Meteor.logout()` instead.)
+
+If, for example, you use React and [`react-meteor-data`](https://docs.meteor.com/packages/react-meteor-data), your login / logout widget could look like this:
 
 ```typescript
 import React from "react"

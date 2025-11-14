@@ -5,7 +5,7 @@ type OIDC = {
    * Start the login process with the configured OpenID server.
    * Does not return (but may throw)
    *
-   * @locus client
+   * @locus Client
    */
   login (...args: any[]) : void
 };

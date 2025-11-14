@@ -2,7 +2,7 @@ Package.describe({
   name: "epfl:accounts-oidc",
   summary: "OpenID Connect (OIDC) for Meteor 3.x",
   version: "0.1.0",
-//  git: "https://github.com/epfl-si/meteor-accounts-oidc.git",
+  git: "https://github.com/epfl-si/meteor-accounts-oidc.git"
 });
 
 Package.onUse(function(api) {
@@ -10,7 +10,7 @@ Package.onUse(function(api) {
   api.use('ecmascript');
   api.use('typescript');
 
-  api.use('accounts-oauth');  // for Accounts.oauth.registerService
+  api.use('accounts-oauth');
   api.use('oauth2');
   api.use('service-configuration');
   api.use('random');
