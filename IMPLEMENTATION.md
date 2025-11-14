@@ -74,7 +74,7 @@ Security rests on the guarantee that step 7 *must not* be allowed to happen if a
 
 In conclusion:
 
-- The good: **security is a core feature** of the Meteor OAuth framework — not removeable, not to be provided by IdP-specific implementations such as this here package — and it has been that way across decades, and protocol major versions, and `loginStyle`s. **If it works, you can trust it.**
+- The good: **security is a core feature** of the Meteor OAuth framework — not removeable, not to be provided by IdP-specific implementations such as this here package — and it has been that way across decades, protocol major versions, and `loginStyle`s. **If it works, you can trust it.**
 - The ugly: near as I can tell, **almost none of that stuff is documented anywhere**; it was all figured out through reverse-engineering.
 
 ### `meteor.loginServiceConfiguration` vs. the OIDC client secret
@@ -97,6 +97,10 @@ The behavior of OpenID-Connect diverges from OAuth's in two fundamental places i
 
 - at the very beginning, i.e. at configuration-time: `epfl:accounts-oidc` supports (and even recommends) using the IdP's `.well-known/openid-configuration` as a configuration source, rather than having to set every single OAuth endpoint by hand in the configuration (which it does support too, FWIW). This code lives in `config.ts`;
 - at the very end, i.e. once the OAuth2 token exchange completes: `accounts-oidc-server.ts` knows how to decode the JWT ID token that it receives in the same exchange. It also follows up with a call to [the UserInfo endpoint](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo).
+
+# User-Customizable Behavior
+
+Finally, all the personal information obtained as per the previous paragraph flows into `OIDC.getNewUserData` and `OIDC.getUserServiceData`, which the app author may override. Their out-of-the-box behavior is described in [README.md](./README.md).
 
 # References
 

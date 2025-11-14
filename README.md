@@ -78,7 +78,9 @@ Do *one* of the following:
 
 ## Use in your app
 
-There is a single entry point for your code, `OIDC.login()`, that takes no arguments. (There is no logout function; use `Meteor.logout()` instead.)
+### Client-side API
+
+The sole entry point for client code is `OIDC.login()`; it takes no arguments. (There is no logout function; use `Meteor.logout()` instead.)
 
 If, for example, you use React and [`react-meteor-data`](https://docs.meteor.com/packages/react-meteor-data), your login / logout widget could look like this:
 
@@ -98,6 +100,54 @@ function LoginLogoutClicky () {
     </>;
 }
 ```
+
+### User synchronization
+
+`OIDC.getNewUserData` and `OIDC.getUserServiceData` are two functions
+that the server-side application code may override, so as to customize
+how information is synchronized from the IdP responses into the
+`Meteor.Users` MongoDB collection on the server.
+
+The default implementation, which will suit most needs,
+
+- matches the `email` field of the `UserInfo` IdP JSON response
+  against the `.services.oidc.id` field of existing users, to avoid
+  creating duplicates;
+- creates and populates new users' `.profile.given_name` and
+  `.profile.last_name` at first login;
+- updates the `.services.oidc.claims` from the claims in the
+  [JWT](https://jwt.io/) ID token upon each successful login.
+
+Note that `epfl:accounts-oidc` does not check the [JWKS
+signature](https://datatracker.ietf.org/doc/html/rfc7517) on said JWT
+token, because it doesn't need to. Read up on that, as well as the API
+that lets you alter the aforementioned default behavior, in the JSDoc
+comments inside `index.ts` in the module's source code.
+
+### RBAC example with the `groups` claim
+
+Assuming your IdP is configured to disclose a `groups` claim in the
+JWT token, here is how to securely use it on the server:
+
+```typescript
+export async function getGroups () {
+  const user = await Meteor.userAsync();
+  return user?.services?.oidc?.claims?.groups || [];
+}
+
+export async function ensureMemberOfGroup (groupName) {
+  if ( -1 == (await getGroups()).index(groupName) ) {
+    throw new Meteor::Error("Unauthorized")
+  }
+}
+```
+
+Use `await ensureMemberOfGroup("relevant-group");` as an opener in all
+your server-side publications, methods etc. per the recommendations of
+[the Meteor documentation](https://guide.meteor.com/security)) to
+achieve a rudimentary, yet effective form of role-based access
+control, or
+[RBAC](https://en.wikipedia.org/wiki/Role-based_access_control).
 
 # Configuration Reference
 
