@@ -107,9 +107,10 @@ type OIDC = {
    *     }
    *   }
    *
-   * The default implementation just copies `.profile.given_name` and
-   * `.profile.family_name` from `identity.given_name` resp.
-   * `identity.family_name`, if present.
+   * The default implementation copies any and all Standard Claims (in
+   * the sense of section 5.1 of the OpenID Connect Core 1.0
+   * specification) present in either the `identity` or `claims`
+   * parameters, into its return value — except for `sub`.
    *
    * @param opts.id_token      The raw JSON Web token (JWT) string.
    *

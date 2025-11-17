@@ -45,14 +45,15 @@ OAuth.registerService('oidc', 2, null, async function(query) {
   }
 });
 
-// Just the few out of
+// A selection from
 // https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims
-// that we care about:
-type OIDCIdentity = {
-  given_name: string
-  family_name: string
-  email: string
-}
+// that make sense to put into new users' `.profile`:
+const personalInfoClaims = [
+  'name', 'given_name', 'family_name', 'middle_name', 'nickname', 'preferred_username',
+  'website', 'email', 'email_verified', 'gender', 'birthdate',
+  'zoneinfo', 'locale', 'phone_number', 'phone_number_verified', 'address'
+] as const;
+type OIDCIdentity = { [ k in typeof personalInfoClaims[number] ] : string }
 
 // Overridable by app authors; see index.ts for details
 OIDC.getUserServiceData<OIDCIdentity> = ({ identity, claims }) => ({
@@ -62,10 +63,15 @@ OIDC.getUserServiceData<OIDCIdentity> = ({ identity, claims }) => ({
 });
 
 // Overridable by app authors; see index.ts for details
-OIDC.getNewUserProfile<OIDCIdentity> = ({ identity }) => {
+OIDC.getNewUserProfile<OIDCIdentity> = ({ identity, claims }) => {
   const profile : Partial<OIDCIdentity> = {};
-  if (identity.given_name) profile.given_name = identity.given_name;
-  if (identity.family_name) profile.family_name = identity.family_name;
+  for (const k of personalInfoClaims) {
+    if (identity[k]) {
+      profile[k] = identity[k];
+    } else if (claims[k]) {
+      profile[k] = claims[k];
+    }
+  }
 
   return profile;
 }
