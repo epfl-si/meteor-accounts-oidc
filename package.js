@@ -33,7 +33,7 @@ Package.onUse(function(api) {
 
   // This is the part that achieves same for TypeScript typings
   // (see the documentation thereof, and `./package-types.json`):
-  api.use('zodern:types');
+  api.use('zodern:types@1.0.13');
   // ... although (at least if the package is in-tree), you may need
   // to additionally rig your `tsconfig.json` with
   //
