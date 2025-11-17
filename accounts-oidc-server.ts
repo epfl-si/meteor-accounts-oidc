@@ -76,10 +76,13 @@ async function getTokens(query: {code: string, state: string}) {
     throw new Error(await response.text());
   }
 
-  return await response.json();
+  return await response.json() as {
+    id_token: string
+    access_token: string
+  };
 }
 
-async function fetchIdentity (accessToken: string) {
+async function fetchIdentity (accessToken: string) : Promise<{ [k : string] : any }> {
   let userInfoEndpoint = await getUserinfoEndpoint();
 
   const response = await fetch(userInfoEndpoint,

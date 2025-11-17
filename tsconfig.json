@@ -1,5 +1,8 @@
 {
-  "compilerOptions": { "skipLibCheck": true },
+  "compilerOptions": {
+    "lib": ["ES2017"],
+    "skipLibCheck": true
+  },
   "files": ["index.ts", "accounts-oidc-client.ts", "accounts-oidc-server.ts"],
   "typeRoots": ["./@types"],
   "include": ["@types/**/*.d.ts"]
