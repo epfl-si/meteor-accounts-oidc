@@ -1,6 +1,6 @@
 # `epfl:accounts-oidc` Atmosphere package
 
-Connect your Meteor application to an identity provider (IdP) using the modern and popular OpenID-Connect (OIDC) protocol.
+Connect your Meteor application to one or more identity provider (IdPs) using the modern and popular OpenID-Connect (OIDC) protocol.
 
 ## Features
 
@@ -168,6 +168,71 @@ your server-side publications, methods etc. per the recommendations of
 achieve a rudimentary, yet effective form of role-based access
 control, or
 [RBAC](https://en.wikipedia.org/wiki/Role-based_access_control).
+
+
+### Multiple Providers
+
+Suppose, for instance, that you want your users to be able to log in
+using either their GitHub account, or their Google account.
+
+If so, the function `newOIDCProvider(slug)` should be called on both
+client and server. It returns an object that works just like `OIDC`,
+except that it consumes a separate configuration named after `slug`.
+That is, you should re-read “Configure the Meteor app,” above,
+mentally replacing `oidc` with the chosen value of `slug` (i.e. in
+`settings.json` or in your `upsertAsync` call). For instance:
+
+```typescript
+// imports/authProviders.ts
+
+import { newOIDCProvider } from 'meteor/epfl:accounts-oidc'
+
+export const Google = newOIDCProvider('google');
+export const GitHub = newOIDCProvider('github');
+
+```
+
+```typescript
+// server/auth.ts
+
+import '../imports/authProviders'
+```
+
+```typescript
+// client/components/multilogin.tsx
+
+import React from "react"
+import { Meteor } from "meteor/meteor"
+import { useTracker } from 'meteor/react-meteor-data'
+import { OIDC } from "meteor/epfl:accounts-oidc"
+import { Google, GitHub } from "../../imports/authProviders"
+
+function LoginLogoutClicky () {
+    const isLoggedIn = useTracker(() => !! Meteor.userId());
+
+    return isLoggedIn ?
+          <div><a href="#" onClick={() => Meteor.logout()}>Logout</a></div> :
+          <>
+              <div><a href="#" onClick={() => Google.login()}>Log in with Google</a></div>
+              <div><a href="#" onClick={() => GitHub.login()}>Log in with GitHub</a></div>
+          </>;
+}
+```
+
+```typescript
+// settings.json
+{
+    "packages": {
+        "service-configuration": {
+            "google": {
+                // ...
+            },
+            "github": {
+                // ...
+            }
+    }
+}
+```
 
 # Configuration Reference
 

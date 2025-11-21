@@ -89,8 +89,8 @@ export function getMeteorUri (): string {
  *
  * ⚠ **This is not a configurable option.** The implementation of the
  * `meteor/oauth` package dictates that the return value be
- * `$ROOT_URL/ oauth/oidc`, regardless of even the `loginStyle`
- * configuration parameter.
+ * `$ROOT_URL/ oauth/oidc` (or `$ROOT_URL/ oauth/yourSlug`),
+ * regardless of even the `loginStyle` configuration parameter.
  *
  * @locus client, server
  */
