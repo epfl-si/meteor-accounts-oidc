@@ -103,19 +103,16 @@ function LoginLogoutClicky () {
 
 ### User synchronization
 
-`OIDC.getNewUserData` and `OIDC.getUserServiceData` are two functions
-that the server-side application code may override, so as to customize
-how information is synchronized from the IdP responses into the
-`Meteor.Users` MongoDB collection on the server.
+`OIDC.getUserServiceData` is a function that the application may
+override on the server, so as to customize how information is
+synchronized from the IdP responses into the `Meteor.Users` MongoDB
+collection on the server.
 
 The default implementation, which will suit most needs,
 
 - matches the `email` field of the `UserInfo` IdP JSON response
   against the `.services.oidc.id` field of existing users, to avoid
   creating duplicates;
-- creates and populates new users' `.profile` out of the personal
-  information present in either the `userInfo` callback results, or
-  the JWT claims;
 - updates the `.services.oidc.claims` from the claims in the
   [JWT](https://jwt.io/) ID token upon each successful login.
 
@@ -124,6 +121,28 @@ signature](https://datatracker.ietf.org/doc/html/rfc7517) on said JWT
 token, because it doesn't need to. Read up on that, as well as the API
 that lets you alter the aforementioned default behavior, in the JSDoc
 comments inside `index.ts` in the module's source code.
+
+Additionally, Meteor's `accounts-base` provides support for setting
+fields when a user is first created. `epfl:accounts-oidc` uses that to
+populate the user's `.profile` field out of the personal information
+present in either the `userInfo` callback results, or the JWT claims.
+In order to replace this behavior with your own, you must call
+[`Accounts.onCreateuser`](https://docs.meteor.com/api/accounts#AccountsServer-onCreateUser)
+on the server.
+
+The personal information that `epfl:accounts-oidc` prepared for the
+default behavior, is available as `options.profile` in that call, so
+that you may just get started by writing
+
+```typescript
+Accounts.onCreateUser((options, user : any) => {
+  user.profile = options.profile;
+
+  return user;
+});
+```
+
+and improve from there.
 
 ### RBAC example with the `groups` claim
 

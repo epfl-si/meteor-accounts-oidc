@@ -58,12 +58,15 @@ _registerOIDCConstructFunction(function newOIDCProviderServer (slug) {
         id_token, access_token, claims, identity
       }),
 
-      // ... create a new Mongo document for the user, but only one
-      // doesn't exist already (as determined by searching for any with
-      // `.services.oidc.id` being the same as `serviceData.id`, per
-      // above) *and* the app didn't provide its own callback using
-      // `Accounts.onCreateUser` (as per
-      // https://docs.meteor.com/api/accounts#AccountsServer-onCreateUser) :
+      // ... create a new Mongo document for the user, but only if one
+      // doesn't exist already (as determined by searching for a
+      // document whose `.services.oidc.id` equals `serviceData.id`,
+      // per above). The `user` struct to be inserted is returned by
+      // the `Accounts.onCreateUser` set up by the app (as per
+      // https://docs.meteor.com/api/accounts#AccountsServer-onCreateUser)
+      // with the following `options` passed as a parameter; or if no
+      // such callback was set up, just `{ profile : options.profile
+      // }`:
       options: {
         profile: Object.fromEntries(personalInfoClaims.flatMap((k) =>
           (identity[k] ? [[k, identity[k]]] :
