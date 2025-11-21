@@ -113,8 +113,9 @@ The default implementation, which will suit most needs,
 - matches the `email` field of the `UserInfo` IdP JSON response
   against the `.services.oidc.id` field of existing users, to avoid
   creating duplicates;
-- creates and populates new users' `.profile.given_name` and
-  `.profile.last_name` at first login;
+- creates and populates new users' `.profile` out of the personal
+  information present in either the `userInfo` callback results, or
+  the JWT claims;
 - updates the `.services.oidc.claims` from the claims in the
   [JWT](https://jwt.io/) ID token upon each successful login.
 
