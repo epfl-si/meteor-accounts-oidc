@@ -8,9 +8,9 @@ let cachedWellKnown : {
   authorization_endpoint ?: string
 };
 
-async function fetchWellKnown() {
+async function fetchWellKnown(slug : string) {
   if (! cachedWellKnown) {
-    const { baseUrl } = await getConfiguration();
+    const { baseUrl } = await getConfiguration(slug);
     if (! baseUrl) {
       throw new ServiceConfiguration.ConfigError("`baseUrl` is not set in service configuration; unable to auto-detect endpoints.");
     }
@@ -25,16 +25,16 @@ function snakeToCamel(str : string) {
   return str.replace(/_([a-z0-9])/g, (match, p1) => p1.toUpperCase());
 }
 
-async function getEndpoint (endpointName : "token" | "userinfo" | "authorization") {
+async function getEndpoint (slug : string, endpointName : "token" | "userinfo" | "authorization") {
   const endpointNameFull = `${endpointName}_endpoint`;
 
-  const config = await getConfiguration();
+  const config = await getConfiguration(slug);
   const endpointNameInConfig = snakeToCamel(endpointNameFull);
   if (config[endpointNameInConfig]) {
     return config[endpointNameInConfig];
   }
 
-  const wellKnown = await fetchWellKnown();
+  const wellKnown = await fetchWellKnown(slug);
   const uri = wellKnown[endpointNameFull];
   if (uri.startsWith("/")) {
     if (config.baseUrl.endsWith("/")) {
@@ -54,8 +54,8 @@ async function getEndpoint (endpointName : "token" | "userinfo" | "authorization
  *
  * @locus client, server
  */
-export function getUserinfoEndpoint () : Promise<string> {
-  return getEndpoint("userinfo")
+export function getUserinfoEndpoint (slug : string) : Promise<string> {
+  return getEndpoint(slug, "userinfo")
 }
 
 /**
@@ -65,8 +65,8 @@ export function getUserinfoEndpoint () : Promise<string> {
  *
  * @locus client, server
  */
-export function getTokenEndpoint ()  : Promise<string> {
-  return getEndpoint("token")
+export function getTokenEndpoint (slug : string)  : Promise<string> {
+  return getEndpoint(slug, "token")
 }
 
 /**
@@ -76,8 +76,8 @@ export function getTokenEndpoint ()  : Promise<string> {
  *
  * @locus client, server
  */
-export function getAuthorizationEndpoint ()  : Promise<string> {
-  return getEndpoint("authorization")
+export function getAuthorizationEndpoint (slug : string)  : Promise<string> {
+  return getEndpoint(slug, "authorization")
 }
 
 export function getMeteorUri (): string {
@@ -94,6 +94,6 @@ export function getMeteorUri (): string {
  *
  * @locus client, server
  */
-export function getRedirectionUri (): string {
-  return Meteor.absoluteUrl("/_oauth/oidc");
+export function getRedirectionUri (slug : string): string {
+  return Meteor.absoluteUrl(`/_oauth/${slug}`);
 }

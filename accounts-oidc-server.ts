@@ -2,7 +2,7 @@ import { Accounts } from "meteor/accounts-base"
 import { OAuth } from "meteor/oauth"
 import { getConfiguration } from "./config"
 import { getTokenEndpoint, getUserinfoEndpoint, getRedirectionUri } from "./uris"
-import { OIDC } from "./index"
+import { _registerOIDCConstructFunction, IdentityCallbackParams } from "./index";
 
 // Tell Meteor to add a few fields to `Meteor.user()` /
 // `Meteor.users.findAsync({...})` in the client. Only in play when
@@ -13,37 +13,6 @@ Accounts.addAutopublishFields({
     forOtherUsers: ['services.oidc.id']
 });
 
-Accounts.oauth.registerService('oidc');
-
-// What should happen once the IdP is happy and we have our `code=` and `state=` back
-//
-// “Documented” at https://guide.meteor.com/2.9-migration
-//
-// RTFS at https://github.com/search?q=repo%3Ameteor%2Fmeteor+symbol%3AregisterService+path%3Aoauth_common.js&type=code
-OAuth.registerService('oidc', 2, null, async function(query) {
-  const { id_token, access_token } = await getTokens(query);
-
-  const opts = {
-    id_token, access_token,
-    claims: decodeJWT(id_token).payload,
-    identity: await fetchIdentity(access_token)
-  };
-
-  // Accounts.updateOrCreateUserFromExternalService() will...
-  return {
-    // ... stuff this into the user's `.services.oidc` structure every
-    // time (on both creations and updates):
-    serviceData: await OIDC.getUserServiceData(opts),
-
-    // ... create a new Mongo document for the user with this, but
-    // only one doesn't exist already (as determined by searching for
-    // any with `.services.oidc.id` being the same as
-    // `serviceData.id`, per above):
-    options:  {
-      profile: await OIDC.getNewUserProfile(opts)
-    }
-  }
-});
 
 // A selection from
 // https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims
@@ -53,40 +22,71 @@ const personalInfoClaims = [
   'website', 'email', 'email_verified', 'gender', 'birthdate',
   'zoneinfo', 'locale', 'phone_number', 'phone_number_verified', 'address'
 ] as const;
-type OIDCIdentity = { [ k in typeof personalInfoClaims[number] ] : string }
+type OIDCIdentity = Partial<{ [ k in typeof personalInfoClaims[number] ] : string }>
 
-// Overridable by app authors; see index.ts for details
-OIDC.getUserServiceData<OIDCIdentity> = ({ identity, claims }) => ({
-  id: // used to check in Mongo whether the user already exists
+_registerOIDCConstructFunction(function newOIDCProviderServer (slug) {
+  Accounts.oauth.registerService(slug);
+
+  const self = {
+    // Overridable by app authors; see index.ts for details
+    getUserServiceData :  ({ identity, claims } : IdentityCallbackParams<OIDCIdentity>) => {
+      return {
+        id: // used to check in Mongo whether the user already exists
          identity.email,
-  claims
-});
-
-// Overridable by app authors; see index.ts for details
-OIDC.getNewUserProfile<OIDCIdentity> = ({ identity, claims }) => {
-  const profile : Partial<OIDCIdentity> = {};
-  for (const k of personalInfoClaims) {
-    if (identity[k]) {
-      profile[k] = identity[k];
-    } else if (claims[k]) {
-      profile[k] = claims[k];
-    }
+        claims
+      };
+    },
   }
 
-  return profile;
-}
+  // What should happen once the IdP is happy and we have our `code=` and `state=` back
+  //
+  // “Documented” at https://guide.meteor.com/2.9-migration
+  //
+  // RTFS at https://github.com/search?q=repo%3Ameteor%2Fmeteor+symbol%3AregisterService+path%3Aoauth_common.js&type=code
+  OAuth.registerService(slug, 2, null, async function(query) {
+    const { id_token, access_token } = await getTokens(slug, query);
 
-async function getTokens(query: {code: string, state: string}) {
-  let { clientId, secret } = await getConfiguration();
+    const claims = decodeJWT(id_token).payload,
+          identity = await fetchIdentity(slug, access_token) as { email: string };
+
+    // Accounts.updateOrCreateUserFromExternalService() will...
+    return {
+      // ... stuff this into the user's `.services.oidc` structure every
+      // time (on both creations and updates). User may override this
+      // behavior by overwriting the method:
+      serviceData: await self.getUserServiceData({
+        id_token, access_token, claims, identity
+      }),
+
+      // ... create a new Mongo document for the user, but only one
+      // doesn't exist already (as determined by searching for any with
+      // `.services.oidc.id` being the same as `serviceData.id`, per
+      // above) *and* the app didn't provide its own callback using
+      // `Accounts.onCreateUser` (as per
+      // https://docs.meteor.com/api/accounts#AccountsServer-onCreateUser) :
+      options: {
+        profile: Object.fromEntries(personalInfoClaims.flatMap((k) =>
+          (identity[k] ? [[k, identity[k]]] :
+            claims[k] ? [[k, claims[k]]] :
+              [])))
+      }
+    };
+  });
+
+  return self;
+});
+
+async function getTokens(slug : string, query: {code: string, state: string}) {
+  let { clientId, secret } = await getConfiguration(slug);
   const clientSecret = secret?.clientSecret;
-  let tokenEndpoint = await getTokenEndpoint();
+  let tokenEndpoint = await getTokenEndpoint(slug);
 
   const token_params = {
     grant_type: 'authorization_code',
     code: query.code,
     client_id: clientId,
     // Entra demands that as part of the `access_token` payload:
-    redirect_uri: getRedirectionUri()
+    redirect_uri: getRedirectionUri(slug)
   };
   if (clientSecret) {
     token_params["client_secret"] = clientSecret;
@@ -108,8 +108,8 @@ async function getTokens(query: {code: string, state: string}) {
   };
 }
 
-async function fetchIdentity (accessToken: string) : Promise<{ [k : string] : any }> {
-  let userInfoEndpoint = await getUserinfoEndpoint();
+async function fetchIdentity (slug: string, accessToken: string) : Promise<{ [k : string] : any }> {
+  let userInfoEndpoint = await getUserinfoEndpoint(slug);
 
   const response = await fetch(userInfoEndpoint,
     {

@@ -6,9 +6,9 @@ import { OIDCConfiguration, LoginStyleString } from "./index"
 /**
  * @locus client, server
  */
-export async function getConfiguration() : Promise<OIDCConfiguration> {
+export async function getConfiguration(slug : string) : Promise<OIDCConfiguration> {
   const config = await ServiceConfiguration.configurations.findOneAsync(
-    { service: 'oidc' }) as OIDCConfiguration;
+    { service: slug }) as OIDCConfiguration;
   if (!config) {
     throw new ServiceConfiguration.ConfigError();
   }
@@ -21,6 +21,7 @@ export async function getConfiguration() : Promise<OIDCConfiguration> {
  * @locus client
  */
 export async function getLoginStyle (
+  slug : string,
   options : any = {}
 ) : Promise<LoginStyleString> {
   // We want to call the private function here (rather than doing the
@@ -37,5 +38,5 @@ export async function getLoginStyle (
     ) : LoginStyleString;
   }
 
-  return (OAuth as OAuthPrivate)._loginStyle ('oidc', await getConfiguration(), options);
+  return (OAuth as OAuthPrivate)._loginStyle (slug, await getConfiguration(slug), options);
 }

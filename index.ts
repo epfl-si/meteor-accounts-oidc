@@ -1,6 +1,6 @@
 import { Configuration } from "meteor/service-configuration"
 
-type IdentityCallbackParams<Identity> = {
+export type IdentityCallbackParams<Identity> = {
   id_token: string
   access_token: string
   identity: Identity,
@@ -86,70 +86,47 @@ type OIDC = {
   getUserServiceData<Identity = unknown>
   (opts : IdentityCallbackParams<Identity>) :
   AsyncOrNot<{ id: string, [ k : string ] : any }>;
-
-  /**
-   * Returns the `profile` structure in case a user will be created.
-   *
-   * This function is called upon every successful login, but its
-   * return value is only used when creating a new user in MongoDB
-   * (otherwise, it is discarded). This function is an internal helper
-   * of `epfl:accounts-oidc`, exposed publicly so that application
-   * authors may replace it with their own implementation. Obviously,
-   * they may also stash its original (function) value first, and then
-   * call it from the replacement implementation e.g.
-   *
-   *   const getNewUserProfileDefaultImpl = OIDC.getNewUserProfile;
-   *
-   *   OIDC.getNewUserProfile = async function(opts) {
-   *     return {
-   *       ...await getNewUserProfileDefaultImpl(opts),
-   *       myNewField: "value"
-   *     }
-   *   }
-   *
-   * The default implementation copies any and all Standard Claims (in
-   * the sense of section 5.1 of the OpenID Connect Core 1.0
-   * specification) present in either the `identity` or `claims`
-   * parameters, into its return value — except for `sub`.
-   *
-   * @param opts.id_token      The raw JSON Web token (JWT) string.
-   *
-   * @param opts.claims        The decoded claims. Note that the JWKS
-   *                           signature (if present) is *not*
-   *                           checked; it needs not be, as the Meteor
-   *                           server was a “witness” to the IdP
-   *                           issuing said token during the OIDC
-   *                           Authentication Request (and after that,
-   *                           the token was supposedly protected en
-   *                           route either by the TLS protocol, or by
-   *                           the fact that your development Keycloak
-   *                           runs on localhost).
-   *
-   * @param opts.access_token  The “old-school” OAuth2 access token, as a
-   *                           string. Beware that although *some* IdP
-   *                           implementations (i.e. Keycloak) encode
-   *                           their access tokens with JWT, not all
-   *                           do; making that assumption in your app
-   *                           would make it non-portable between
-   *                           IdPs.
-   *
-   * @param opts.identity      Whatever data structure the IdP returned
-   *                           (in JSON) from the `UserInfo` REST API call.
-   *
-   * @return The data structure to be used as the `profile` field of a
-   *         new MongoDB document in `Meteor.Users`, if this is the
-   *         first login for this user; discarded otherwise.
-   *
-   * @locus Server
-   */
-  getNewUserProfile<Identity = unknown>
-  (opts : IdentityCallbackParams<Identity>) :
-  AsyncOrNot<{[ k : string] : any}>;
 };
 
 export type LoginStyleString = 'popup' | 'redirect';
 
-export const OIDC = {} as OIDC;
+/**
+ * Create a new object like `OIDC`
+ *
+ * Use this (rather than the default `OIDC` object) in case your app
+ * wants to use more than one OpenID-Connect compatible IdP.
+ *
+ * @param slug The nickname for your new instance. From then on, you
+ * must read the documentation as if `"oidc"` was replaced by the
+ * value of `slug`, in particular as far as configuration is concerned
+ * (i.e. your settings or your call to
+ * `ServiceConfiguration.configurations.upsertAsync` should use
+ * `service.myslug` resp. `upsertAsync` the `{ service: slug }`
+ * document)
+ *
+ * @locus Anywhere
+ */
+
+type OIDCConstructFunction = (slug : string) => Partial<OIDC>;
+
+export const OIDC : Partial<OIDC> = {};
+
+let _OIDCConstructFunction : OIDCConstructFunction
+export function _registerOIDCConstructFunction (f : OIDCConstructFunction) {
+  _OIDCConstructFunction = f;
+  Object.assign(OIDC, {... newOIDCProvider('oidc') });
+}
+
+const oidcProviders: { [slug : string] : Partial<OIDC> } = {}
+export function newOIDCProvider (slug : string) {
+  if (oidcProviders[slug]) {
+    throw new Error(`slug ${slug} is already taken!`);
+  }
+
+  oidcProviders[slug] = _OIDCConstructFunction(slug);
+
+  return oidcProviders[slug];
+}
 
 export type OIDCConfiguration = Configuration & {
   loginStyle: LoginStyleString;  // default 'popup'
