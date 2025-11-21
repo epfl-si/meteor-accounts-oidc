@@ -47,16 +47,17 @@ _registerOIDCConstructFunction(function newOIDCProviderServer (slug) {
     const { id_token, access_token } = await getTokens(slug, query);
 
     const claims = decodeJWT(id_token).payload,
-          identity = await fetchIdentity(slug, access_token) as { email: string };
+          identity = await fetchIdentity(slug, access_token) as { email: string },
+          options = {
+            id_token, access_token, claims, identity
+          };
 
     // Accounts.updateOrCreateUserFromExternalService() will...
     return {
       // ... stuff this into the user's `.services.oidc` structure every
       // time (on both creations and updates). User may override this
       // behavior by overwriting the method:
-      serviceData: await self.getUserServiceData({
-        id_token, access_token, claims, identity
-      }),
+      serviceData: await self.getUserServiceData(options),
 
       // ... create a new Mongo document for the user, but only if one
       // doesn't exist already (as determined by searching for a
@@ -68,6 +69,8 @@ _registerOIDCConstructFunction(function newOIDCProviderServer (slug) {
       // such callback was set up, just `{ profile : options.profile
       // }`:
       options: {
+        service: slug,
+        ...options,
         profile: Object.fromEntries(personalInfoClaims.flatMap((k) =>
           (identity[k] ? [[k, identity[k]]] :
             claims[k] ? [[k, claims[k]]] :
