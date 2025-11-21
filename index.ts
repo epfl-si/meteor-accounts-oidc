@@ -74,12 +74,10 @@ type OIDC = {
    *         MongoDB document in the `Meteor.Users` collection. The
    *         `.id` of the return value will first be used to search
    *         for an already-existing user having the same
-   *         `.services.oidc.id` (See @link getNewUserProfile for
-   *         additional details on why this matters); and then the
-   *         entire return value will be either merged into (for an
-   *         existing user), or used as (for a new user being created)
-   *         the user document's `.services.oidc` sub-field in
-   *         MongoDB.
+   *         `.services.oidc.id`; and then the entire return value
+   *         will be either merged into (for an existing user), or
+   *         used as (for a new user being created) the user
+   *         document's `.services.oidc` sub-field in MongoDB.
    *
    * @locus Server
    */
