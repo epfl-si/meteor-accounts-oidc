@@ -144,6 +144,18 @@ Accounts.onCreateUser((options, user : any) => {
 
 and improve from there.
 
+For a user being created by `epfl:accounts-tequila`, the entire contents of
+the `options` object in that callback is as follows:
+
+| Option name    | Type   | Purpose                                                                                                                                                                                                                                                                                                 |
+|----------------|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `service`      | string | `oidc` by default, or whatever parameter you passed to `newOIDCProviderServer()`; see § “Multiple Providers”, below                                                                                                                                                                                     |
+| `id_token`     | string | The raw (un-decoded) JWT token                                                                                                                                                                                                                                                                          |
+| `access_token` | string | The “old-school” OAuth2 access token                                                                                                                                                                                                                                                                    |
+| `claims`       | object | The decoded content of `id_token`; JWKS signature is *not* checked, see above                                                                                                                                                                                                                           |
+| `identity`     | object | Whatever was returned by the REST call to the `[UserInfo endpoint](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo)`                                                                                                                                                                     |
+| `profile`      | object | The union of all well-known personal information fields (as per the [OIDC spec](https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims)) found in `claims` and `identity`. Would also be the value set as the user's `profile`, if one had not set up an `Accounts.onCreateUser` callback |
+
 ### RBAC example with the `groups` claim
 
 Assuming your IdP is configured to disclose a `groups` claim in the
@@ -196,6 +208,17 @@ export const GitHub = newOIDCProvider('github');
 // server/auth.ts
 
 import '../imports/authProviders'
+
+// See above on why (or whether) you want an `onCreateUser` callback:
+Accounts.onCreateUser((options, user : any) => {
+    user.profile = options.profile;
+    if (options.service === "google") {
+        // ...
+    } else if (options.service === "github") {
+        // ...
+    }
+    return user;
+}
 ```
 
 ```typescript
