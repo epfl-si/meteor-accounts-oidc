@@ -1,0 +1,7 @@
+{
+  "name": "meteor/epfl:accounts-oidc",
+  "version": "0.1.0",
+  "devDependencies": {
+    "@types/meteor": "^2.9.10"
+  }
+}
