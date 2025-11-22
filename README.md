@@ -118,9 +118,9 @@ The default implementation, which will suit most needs,
 
 Note that `epfl:accounts-oidc` does not check the [JWKS
 signature](https://datatracker.ietf.org/doc/html/rfc7517) on said JWT
-token, because it doesn't need to. Read up on that, as well as the API
-that lets you alter the aforementioned default behavior, in the JSDoc
-comments inside `index.ts` in the module's source code.
+token, because it doesn't need to. Read up on that, as well as on how
+to alter the aforementioned default behavior, in the [API
+documentation](api/API.md#getuserservicedata).
 
 Additionally, Meteor's `accounts-base` provides support for setting
 fields when a user is first created. `epfl:accounts-oidc` uses that to
@@ -135,6 +135,8 @@ default behavior, is available as `options.profile` in that call, so
 that you may just get started by writing
 
 ```typescript
+import { CreateUserOptions } from 'meteor/epfl:accounts-oidc'
+
 Accounts.onCreateUser((options, user : any) => {
   user.profile = options.profile;
 
@@ -142,19 +144,10 @@ Accounts.onCreateUser((options, user : any) => {
 });
 ```
 
-and improve from there.
-
-For a user being created by `epfl:accounts-tequila`, the entire contents of
-the `options` object in that callback is as follows:
-
-| Option name    | Type   | Purpose                                                                                                                                                                                                                                                                                                 |
-|----------------|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `service`      | string | `oidc` by default, or whatever parameter you passed to `newOIDCProviderServer()`; see § “Multiple Providers”, below                                                                                                                                                                                     |
-| `id_token`     | string | The raw (un-decoded) JWT token                                                                                                                                                                                                                                                                          |
-| `access_token` | string | The “old-school” OAuth2 access token                                                                                                                                                                                                                                                                    |
-| `claims`       | object | The decoded content of `id_token`; JWKS signature is *not* checked, see above                                                                                                                                                                                                                           |
-| `identity`     | object | Whatever was returned by the REST call to the `[UserInfo endpoint](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo)`                                                                                                                                                                     |
-| `profile`      | object | The union of all well-known personal information fields (as per the [OIDC spec](https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims)) found in `claims` and `identity`. Would also be the value set as the user's `profile`, if one had not set up an `Accounts.onCreateUser` callback |
+and improve from there. [The `CreateUserOptions` type in the API
+docs](api/API.md#createuseroptions) describes all the fields of the
+`options` structure that `meteor/epfl:accounts-oidc` passes to your
+`Accounts.onCreateUser` callback.
 
 ### RBAC example with the `groups` claim
 
@@ -187,10 +180,11 @@ control, or
 Suppose, for instance, that you want your users to be able to log in
 using either their GitHub account, or their Google account.
 
-If so, the function `newOIDCProvider(slug)` should be called on both
-client and server. It returns an object that works just like `OIDC`,
-except that it consumes a separate configuration named after `slug`.
-That is, you should re-read “Configure the Meteor app,” above,
+If so, the function
+`newOIDCProvider(slug)`](api/API.md#newoidcprovider) should be called
+on both client and server. It returns an object that works just like
+`OIDC`, except that it consumes a separate configuration named after
+`slug`. That is, you should re-read “Configure the Meteor app,” above,
 mentally replacing `oidc` with the chosen value of `slug` (i.e. in
 `settings.json` or in your `upsertAsync` call). For instance:
 
@@ -268,3 +262,5 @@ function LoginLogoutClicky () {
 | `tokenEndpoint`      | The URL of the [OIDC Token Endpoint](https://openid.net/specs/openid-connect-core-1_0.html#TokenEndpoint)                                                                              | `https://login.microsoftonline.com/aaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeeeeee/oauth2/v2.0/token`     | `token_endpoint` JSON response field at URL: `baseUrl + "/.well-known/openid-configuration"`          |
 | `authorizeEndpoint`  | The URL of the [Authorization Endpoint](https://openid.net/specs/openid-connect-core-1_0.html#AuthorizationEndpoint) (the one that the server calls to finish the OAuth login process) | `https://login.microsoftonline.com/aaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeeeeee/oauth2/v2.0/user_info` | `authorization_endpoint` JSON response field  at URL: `baseUrl + "/.well-known/openid-configuration"` |
 | `userinfoEndpoint`   | The URL of the [UserInfo Endpoint](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo)                                         | `https://login.microsoftonline.com/aaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeeeeee/oauth2/v2.0/user_info` | `userinfo_endpoint` JSON response field at URL: `baseUrl + "/.well-known/openid-configuration"`       |
+
+See also: [`OIDCConfiguration` in the API docs](api/API.md#oidcconfiguration)
