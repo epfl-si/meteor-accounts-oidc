@@ -69,7 +69,7 @@ Do *one* of the following:
            loginStyle: "redirect",
            "baseUrl": "https://login.microsoftonline.com/aaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeeeeee/",
            "clientId": "CLIENT-ID",
-           "clientSecret": "CLIENT-SECRET"
+           "secret": { "clientSecret": "CLIENT-SECRET" }
          },
        }
      );
