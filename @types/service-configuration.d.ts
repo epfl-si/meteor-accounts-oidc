@@ -3,11 +3,6 @@ declare module 'meteor/service-configuration' {
 
   import { Mongo } from 'meteor/mongo';
 
-  interface Configuration {
-    appId: string;
-    secret: string;
-  }
-
   namespace ServiceConfiguration {
     declare const configurations: InstanceType<Mongo.CollectionStatic<Configuration>>;
     declare class ConfigError extends Error {

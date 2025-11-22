@@ -165,7 +165,7 @@ export type LoginStyleString = 'popup' | 'redirect';
  * The structure of the `meteor/service-configuration` MongoDB document
  * that `meteor/epfl:accounts-oidc` consumes as a configuration source.
  */
-export type OIDCConfiguration = Configuration & {
+export type OIDCConfiguration = {
   /** Either `popup` (the default), or `redirect` */
   loginStyle: LoginStyleString;
   /**
