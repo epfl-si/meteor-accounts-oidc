@@ -2,6 +2,8 @@
   "name": "meteor/epfl:accounts-oidc",
   "version": "0.1.0",
   "devDependencies": {
-    "@types/meteor": "^2.9.10"
+    "@types/meteor": "^2.9.10",
+    "typedoc": "^0.28.14",
+    "typedoc-plugin-markdown": "^4.9.0"
   }
 }
