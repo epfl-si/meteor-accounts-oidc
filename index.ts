@@ -7,9 +7,9 @@ export type IdentityCallbackParams<Identity> = {
   claims: { [ k : string ] : any }
 }
 
-type AsyncOrNot<T> = Promise<T> | T;
+export type UserServiceData = { id: string, [ k : string ] : any };
 
-type OIDC = {
+export type OIDC = {
   /**
    * Start the login process with the configured OpenID server.
    * Does not return (but may throw)
@@ -83,10 +83,11 @@ type OIDC = {
    */
   getUserServiceData<Identity = unknown>
   (opts : IdentityCallbackParams<Identity>) :
-  AsyncOrNot<{ id: string, [ k : string ] : any }>;
+  Promise<UserServiceData> | UserServiceData;
 };
 
-export type LoginStyleString = 'popup' | 'redirect';
+export type OIDCClient = Pick<OIDC, "login">;
+export type OIDCServer = Pick<OIDC, "getUserServiceData">;
 
 /**
  * Create a new object like `OIDC`
@@ -105,11 +106,11 @@ export type LoginStyleString = 'popup' | 'redirect';
  * @locus Anywhere
  */
 
-type OIDCConstructFunction = (slug : string) => Partial<OIDC>;
+type OIDCConstructFunction = (slug : string) => OIDCClient | OIDCServer;
 
-export const OIDC : Partial<OIDC> = {};
+export const OIDC : OIDCClient | OIDCServer = {} as OIDC;
 
-let _OIDCConstructFunction : OIDCConstructFunction
+let _OIDCConstructFunction : OIDCConstructFunction;
 export function _registerOIDCConstructFunction (f : OIDCConstructFunction) {
   _OIDCConstructFunction = f;
   Object.assign(OIDC, {... newOIDCProvider('oidc') });
@@ -125,6 +126,8 @@ export function newOIDCProvider (slug : string) {
 
   return oidcProviders[slug];
 }
+
+export type LoginStyleString = 'popup' | 'redirect';
 
 export type OIDCConfiguration = Configuration & {
   loginStyle: LoginStyleString;  // default 'popup'

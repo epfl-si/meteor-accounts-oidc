@@ -1,7 +1,7 @@
 import { Accounts } from "meteor/accounts-base"
 import { OAuth } from "meteor/oauth"
-import { getConfiguration, getLoginStyle } from "./config"
-import { getAuthorizationEndpoint, getMeteorUri, getRedirectionUri } from "./uris"
+import { Configuration } from "./config"
+import { URIs, getMeteorUri } from "./uris"
 import { Random } from "meteor/random"
 
 import { OIDCConfiguration, LoginStyleString, _registerOIDCConstructFunction } from "./index"
@@ -16,18 +16,22 @@ _registerOIDCConstructFunction(function newOIDCProviderClient (slug : string) {
     }
   };
 
-  async function loginWithOpenIDConnect (options : Partial<OIDCConfiguration> = {}) : Promise<void> {
-    const config = await getConfiguration(slug);
+  async function loginWithOpenIDConnect (
+    options : Partial<OIDCConfiguration> = {}
+  ) : Promise<void> {
+    const config = Configuration(slug),
+          uris = URIs(config);
+    const { clientId, popupOptions } = await config.getConfiguration();
 
     const credentialToken = Random.secret();
 
     let scope = options.scope || ['openid'];
     if (scope instanceof Array) scope = scope.join(' ');
 
-    const loginStyle = await getLoginStyle(slug, options),
-          redirectUri = getRedirectionUri(slug);
+    const loginStyle = await config.getLoginStyle(),
+          redirectUri = uris.getRedirectionUri();
 
-    const loginUrl = new URL(await getAuthorizationEndpoint(slug));
+    const loginUrl = new URL(await uris.getAuthorizationEndpoint());
 
     type OAuthPrivate = typeof OAuth & {
       // https://github.com/meteor/meteor/blob/master/packages/oauth/oauth_client.js
@@ -41,7 +45,7 @@ _registerOIDCConstructFunction(function newOIDCProviderClient (slug : string) {
     const loginUrlParameters = {
       ...(options.loginUrlParameters || {}),
       response_type: "code",
-      client_id:  config.clientId,
+      client_id:  clientId,
       scope,
       redirect_uri: redirectUri,
       state: (OAuth as OAuthPrivate)._stateParam(loginStyle, credentialToken,
@@ -76,7 +80,7 @@ _registerOIDCConstructFunction(function newOIDCProviderClient (slug : string) {
           }
         },
         credentialToken,
-        popupOptions: config.popupOptions
+        popupOptions
       });
     });
 
