@@ -1,99 +1,109 @@
 import { Meteor } from "meteor/meteor"
 import { ServiceConfiguration } from "meteor/service-configuration"
-import { getConfiguration, getLoginStyle } from "./config"
-
-let cachedWellKnown : {
-  token_endpoint ?: string
-  user_info_endpoint ?: string
-  authorization_endpoint ?: string
-};
-
-async function fetchWellKnown(slug : string) {
-  if (! cachedWellKnown) {
-    const { baseUrl } = await getConfiguration(slug);
-    if (! baseUrl) {
-      throw new ServiceConfiguration.ConfigError("`baseUrl` is not set in service configuration; unable to auto-detect endpoints.");
-    }
-    const response = await fetch(`${baseUrl}${baseUrl.endsWith("/") ? "": "/" }.well-known/openid-configuration`);
-    cachedWellKnown = await response.json();
-  }
-
-  return cachedWellKnown;
-}
+import { Configuration } from "./config"
 
 function snakeToCamel(str : string) {
   return str.replace(/_([a-z0-9])/g, (match, p1) => p1.toUpperCase());
 }
 
-async function getEndpoint (slug : string, endpointName : "token" | "userinfo" | "authorization") {
-  const endpointNameFull = `${endpointName}_endpoint`;
+export function URIs (of : string | Configuration) {
+  const { config, slug } =
+        typeof(of) === "string" ?
+        { config : Configuration(of), slug: of } :
+          {config : of, slug : of.slug };
 
-  const config = await getConfiguration(slug);
-  const endpointNameInConfig = snakeToCamel(endpointNameFull);
-  if (config[endpointNameInConfig]) {
-    return config[endpointNameInConfig];
-  }
+  const cachedWellKnown : { [ wellKnownUri : string ] : {
+    token_endpoint ?: string
+    user_info_endpoint ?: string
+    authorization_endpoint ?: string
+  } } = {};
 
-  const wellKnown = await fetchWellKnown(slug);
-  const uri = wellKnown[endpointNameFull];
-  if (uri.startsWith("/")) {
-    if (config.baseUrl.endsWith("/")) {
-      return `${config.baseUrl}${uri.substr(1)}`;
-    } else {
-      return `${config.baseUrl}${uri}`;
+  return {
+    /**
+     * @return The URL of the `user_info` OAuth2 endpoint found in either
+     * the `service-configuration` data or
+     * `.well-known/openid-configuration`, with priority to the former.
+     *
+     * @locus client, server
+     */
+    getUserInfoEndpoint() : Promise<string> {
+      return getEndpoint("userinfo");
+    },
+
+    /**
+     * @return The URL of the `user_info` OAuth2 endpoint found in either
+     * the `service-configuration` data or
+     * `.well-known/openid-configuration`, with priority to the former.
+     *
+     * @locus client, server
+     */
+    getTokenEndpoint () : Promise<string> {
+      return getEndpoint("token");
+    },
+
+    /**
+     * @return The URL of the `authorization` OAuth2 endpoint found in either
+     * the `service-configuration` data or
+     * `.well-known/openid-configuration`, with priority to the former.
+     *
+     * @locus client, server
+     */
+    getAuthorizationEndpoint () : Promise<string> {
+      return getEndpoint("authorization");
+    },
+
+    /**
+     * @return The URI to pass to the IdP as the OAuth redirection URI.
+     *
+     * ⚠ **This is not a configurable option.** The implementation of
+     * the `meteor/oauth` package dictates that the return value be
+     * `$ROOT_URL/ oauth/oidc` (or `$ROOT_URL/ oauth/yourSlug`),
+     * regardless of even the `loginStyle` configuration parameter.
+     *
+     * @locus client, server
+     */
+    getRedirectionUri () : string {
+      return Meteor.absoluteUrl(`/_oauth/${slug}`);
     }
-  } else {
-    return uri;
   }
-}
 
-/**
- * @return The URL of the `user_info` OAuth2 endpoint found in either
- * the `service-configuration` data or
- * `.well-known/service-configuration`, with priority to the former.
- *
- * @locus client, server
- */
-export function getUserinfoEndpoint (slug : string) : Promise<string> {
-  return getEndpoint(slug, "userinfo")
-}
+  async function fetchWellKnown () {
+    const { baseUrl } = await config.getConfiguration();
+    if (! baseUrl) {
+      throw new ServiceConfiguration.ConfigError("`baseUrl` is not set in service configuration; unable to auto-detect endpoints.");
+    }
+    if (! cachedWellKnown[baseUrl]) {
+      const response = await fetch(`${baseUrl}${baseUrl.endsWith("/") ? "": "/" }.well-known/openid-configuration`);
+      cachedWellKnown[baseUrl] = await response.json();
+    }
+    return cachedWellKnown[baseUrl];
+  }
 
-/**
- * @return The URL of the `user_info` OAuth2 endpoint found in either
- * the `service-configuration` data or
- * `.well-known/service-configuration`, with priority to the former.
- *
- * @locus client, server
- */
-export function getTokenEndpoint (slug : string)  : Promise<string> {
-  return getEndpoint(slug, "token")
-}
+  async function getEndpoint (
+    endpointName : "token" | "userinfo" | "authorization"
+  ) {
+    const endpointNameFull = `${endpointName}_endpoint`;
 
-/**
- * @return The URL of the `authorization` OAuth2 endpoint found in either
- * the `service-configuration` data or
- * `.well-known/service-configuration`, with priority to the former.
- *
- * @locus client, server
- */
-export function getAuthorizationEndpoint (slug : string)  : Promise<string> {
-  return getEndpoint(slug, "authorization")
+    const conf = await config.getConfiguration();
+    const endpointNameInConfig = snakeToCamel(endpointNameFull);
+    if (conf[endpointNameInConfig]) {
+      return conf[endpointNameInConfig];
+    }
+
+    const wellKnown = await fetchWellKnown();
+    const uri = wellKnown[endpointNameFull];
+    if (uri.startsWith("/")) {
+      if (conf.baseUrl.endsWith("/")) {
+        return `${conf.baseUrl}${uri.substr(1)}`;
+      } else {
+        return `${conf.baseUrl}${uri}`;
+      }
+    } else {
+      return uri;
+    }
+  }
 }
 
 export function getMeteorUri (): string {
   return Meteor.absoluteUrl("");
-}
-
-/**
- * @return The URI to pass to the IdP as the OAuth redirection URI.
- *
- * ⚠ **This is not a configurable option.** The implementation of the
- * `meteor/oauth` package dictates that the return value be
- * `$ROOT_URL/ oauth/oidc` (or `$ROOT_URL/ oauth/yourSlug`),
- * regardless of even the `loginStyle` configuration parameter.
- *
- * @locus client, server
- */
-export function getRedirectionUri (slug : string): string {
-  return Meteor.absoluteUrl(`/_oauth/${slug}`);
 }

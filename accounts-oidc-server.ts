@@ -1,8 +1,8 @@
 import { Accounts } from "meteor/accounts-base"
 import { OAuth } from "meteor/oauth"
-import { getConfiguration } from "./config"
-import { getTokenEndpoint, getUserinfoEndpoint, getRedirectionUri } from "./uris"
-import { _registerOIDCConstructFunction, IdentityCallbackParams } from "./index";
+import { Configuration } from "./config"
+import { URIs } from "./uris"
+import { _registerOIDCConstructFunction, OIDCServer, IdentityCallbackParams } from "./index";
 
 // Tell Meteor to add a few fields to `Meteor.user()` /
 // `Meteor.users.findAsync({...})` in the client. Only in play when
@@ -27,7 +27,7 @@ type OIDCIdentity = Partial<{ [ k in typeof personalInfoClaims[number] ] : strin
 _registerOIDCConstructFunction(function newOIDCProviderServer (slug) {
   Accounts.oauth.registerService(slug);
 
-  const self = {
+  const self : OIDCServer = {
     // Overridable by app authors; see index.ts for details
     getUserServiceData :  ({ identity, claims } : IdentityCallbackParams<OIDCIdentity>) => {
       return {
@@ -38,16 +38,18 @@ _registerOIDCConstructFunction(function newOIDCProviderServer (slug) {
     },
   }
 
+  const config = Configuration(slug);
+
   // What should happen once the IdP is happy and we have our `code=` and `state=` back
   //
   // “Documented” at https://guide.meteor.com/2.9-migration
   //
   // RTFS at https://github.com/search?q=repo%3Ameteor%2Fmeteor+symbol%3AregisterService+path%3Aoauth_common.js&type=code
-  OAuth.registerService(slug, 2, null, async function(query) {
-    const { id_token, access_token } = await getTokens(slug, query);
+  OAuth.registerService(slug, 2, null, async function(oauthResults) {
+    const { id_token, access_token } = await getTokens(config, oauthResults);
 
     const claims = decodeJWT(id_token).payload,
-          identity = await fetchIdentity(slug, access_token) as { email: string },
+          identity = await fetchIdentity(config, access_token),
           options = {
             id_token, access_token, claims, identity
           };
@@ -82,17 +84,21 @@ _registerOIDCConstructFunction(function newOIDCProviderServer (slug) {
   return self;
 });
 
-async function getTokens(slug : string, query: {code: string, state: string}) {
-  let { clientId, secret } = await getConfiguration(slug);
+type OauthResults = {code: string, state: string};
+
+async function getTokens(config : Configuration, oauthResults: OauthResults) {
+  const { clientId, secret } = await config.getConfiguration();
   const clientSecret = secret?.clientSecret;
-  let tokenEndpoint = await getTokenEndpoint(slug);
+
+  const uris = URIs(config),
+        tokenEndpoint = await uris.getTokenEndpoint();
 
   const token_params = {
     grant_type: 'authorization_code',
-    code: query.code,
+    code: oauthResults.code,
     client_id: clientId,
     // Entra demands that as part of the `access_token` payload:
-    redirect_uri: getRedirectionUri(slug)
+    redirect_uri: uris.getRedirectionUri()
   };
   if (clientSecret) {
     token_params["client_secret"] = clientSecret;
@@ -114,8 +120,8 @@ async function getTokens(slug : string, query: {code: string, state: string}) {
   };
 }
 
-async function fetchIdentity (slug: string, accessToken: string) : Promise<{ [k : string] : any }> {
-  let userInfoEndpoint = await getUserinfoEndpoint(slug);
+async function fetchIdentity (config : Configuration, accessToken: string) {
+  const userInfoEndpoint = await URIs(config).getUserInfoEndpoint();
 
   const response = await fetch(userInfoEndpoint,
     {
@@ -123,7 +129,7 @@ async function fetchIdentity (slug: string, accessToken: string) : Promise<{ [k 
       body: new URLSearchParams({ access_token: accessToken })
     });
 
-  return await response.json();
+  return await response.json() as OIDCIdentity;
 }
 
 /**
