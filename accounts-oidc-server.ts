@@ -2,7 +2,7 @@ import { Accounts } from "meteor/accounts-base"
 import { OAuth } from "meteor/oauth"
 import { Configuration } from "./config"
 import { URIs } from "./uris"
-import { _registerOIDCConstructFunction, OIDCServer, IdentityCallbackParams } from "./index";
+import { _registerOIDCConstructFunction, OIDCServer } from "./index";
 
 // Tell Meteor to add a few fields to `Meteor.user()` /
 // `Meteor.users.findAsync({...})` in the client. Only in play when
@@ -13,6 +13,9 @@ Accounts.addAutopublishFields({
     forOtherUsers: ['services.oidc.id']
 });
 
+// The default implementation assumes that the IdP returns at least
+// `email` in its UserInfo REST call:
+type DefaultImplIdentity = {email : string};
 
 // A selection from
 // https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims
@@ -21,22 +24,19 @@ const personalInfoClaims = [
   'name', 'given_name', 'family_name', 'middle_name', 'nickname', 'preferred_username',
   'website', 'email', 'email_verified', 'gender', 'birthdate',
   'zoneinfo', 'locale', 'phone_number', 'phone_number_verified', 'address'
-] as const;
-type OIDCIdentity = Partial<{ [ k in typeof personalInfoClaims[number] ] : string }>
+];
 
 _registerOIDCConstructFunction(function newOIDCProviderServer (slug) {
   Accounts.oauth.registerService(slug);
 
-  const self : OIDCServer = {
+  const self : OIDCServer<DefaultImplIdentity> = {
     // Overridable by app authors; see index.ts for details
-    getUserServiceData :  ({ identity, claims } : IdentityCallbackParams<OIDCIdentity>) => {
-      return {
-        id: // used to check in Mongo whether the user already exists
+    getUserServiceData :  ({ identity, claims }) => ({
+      id: // used to check in Mongo whether the user already exists
          identity.email,
-        claims
-      };
-    },
-  }
+      claims
+      })
+  };
 
   const config = Configuration(slug);
 
@@ -129,7 +129,7 @@ async function fetchIdentity (config : Configuration, accessToken: string) {
       body: new URLSearchParams({ access_token: accessToken })
     });
 
-  return await response.json() as OIDCIdentity;
+  return await response.json() as DefaultImplIdentity;
 }
 
 /**
