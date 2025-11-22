@@ -1,6 +1,6 @@
 # `epfl:accounts-oidc` Atmosphere package
 
-Connect your Meteor application to an identity provider (IdP) using the modern and popular OpenID-Connect (OIDC) protocol.
+Connect your Meteor application to one or more identity provider (IdPs) using the modern and popular OpenID-Connect (OIDC) protocol.
 
 ## Features
 
@@ -69,7 +69,7 @@ Do *one* of the following:
            loginStyle: "redirect",
            "baseUrl": "https://login.microsoftonline.com/aaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeeeeee/",
            "clientId": "CLIENT-ID",
-           "clientSecret": "CLIENT-SECRET"
+           "secret": { "clientSecret": "CLIENT-SECRET" }
          },
        }
      );
@@ -103,19 +103,16 @@ function LoginLogoutClicky () {
 
 ### User synchronization
 
-`OIDC.getNewUserData` and `OIDC.getUserServiceData` are two functions
-that the server-side application code may override, so as to customize
-how information is synchronized from the IdP responses into the
-`Meteor.Users` MongoDB collection on the server.
+`OIDC.getUserServiceData` is a function that the application may
+override on the server, so as to customize how information is
+synchronized from the IdP responses into the `Meteor.Users` MongoDB
+collection on the server.
 
 The default implementation, which will suit most needs,
 
 - matches the `email` field of the `UserInfo` IdP JSON response
   against the `.services.oidc.id` field of existing users, to avoid
   creating duplicates;
-- creates and populates new users' `.profile` out of the personal
-  information present in either the `userInfo` callback results, or
-  the JWT claims;
 - updates the `.services.oidc.claims` from the claims in the
   [JWT](https://jwt.io/) ID token upon each successful login.
 
@@ -124,6 +121,40 @@ signature](https://datatracker.ietf.org/doc/html/rfc7517) on said JWT
 token, because it doesn't need to. Read up on that, as well as the API
 that lets you alter the aforementioned default behavior, in the JSDoc
 comments inside `index.ts` in the module's source code.
+
+Additionally, Meteor's `accounts-base` provides support for setting
+fields when a user is first created. `epfl:accounts-oidc` uses that to
+populate the user's `.profile` field out of the personal information
+present in either the `userInfo` callback results, or the JWT claims.
+In order to replace this behavior with your own, you must call
+[`Accounts.onCreateuser`](https://docs.meteor.com/api/accounts#AccountsServer-onCreateUser)
+on the server.
+
+The personal information that `epfl:accounts-oidc` prepared for the
+default behavior, is available as `options.profile` in that call, so
+that you may just get started by writing
+
+```typescript
+Accounts.onCreateUser((options, user : any) => {
+  user.profile = options.profile;
+
+  return user;
+});
+```
+
+and improve from there.
+
+For a user being created by `epfl:accounts-tequila`, the entire contents of
+the `options` object in that callback is as follows:
+
+| Option name    | Type   | Purpose                                                                                                                                                                                                                                                                                                 |
+|----------------|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `service`      | string | `oidc` by default, or whatever parameter you passed to `newOIDCProviderServer()`; see § “Multiple Providers”, below                                                                                                                                                                                     |
+| `id_token`     | string | The raw (un-decoded) JWT token                                                                                                                                                                                                                                                                          |
+| `access_token` | string | The “old-school” OAuth2 access token                                                                                                                                                                                                                                                                    |
+| `claims`       | object | The decoded content of `id_token`; JWKS signature is *not* checked, see above                                                                                                                                                                                                                           |
+| `identity`     | object | Whatever was returned by the REST call to the `[UserInfo endpoint](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo)`                                                                                                                                                                     |
+| `profile`      | object | The union of all well-known personal information fields (as per the [OIDC spec](https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims)) found in `claims` and `identity`. Would also be the value set as the user's `profile`, if one had not set up an `Accounts.onCreateUser` callback |
 
 ### RBAC example with the `groups` claim
 
@@ -149,6 +180,82 @@ your server-side publications, methods etc. per the recommendations of
 achieve a rudimentary, yet effective form of role-based access
 control, or
 [RBAC](https://en.wikipedia.org/wiki/Role-based_access_control).
+
+
+### Multiple Providers
+
+Suppose, for instance, that you want your users to be able to log in
+using either their GitHub account, or their Google account.
+
+If so, the function `newOIDCProvider(slug)` should be called on both
+client and server. It returns an object that works just like `OIDC`,
+except that it consumes a separate configuration named after `slug`.
+That is, you should re-read “Configure the Meteor app,” above,
+mentally replacing `oidc` with the chosen value of `slug` (i.e. in
+`settings.json` or in your `upsertAsync` call). For instance:
+
+```typescript
+// imports/authProviders.ts
+
+import { newOIDCProvider } from 'meteor/epfl:accounts-oidc'
+
+export const Google = newOIDCProvider('google');
+export const GitHub = newOIDCProvider('github');
+
+```
+
+```typescript
+// server/auth.ts
+
+import '../imports/authProviders'
+
+// See above on why (or whether) you want an `onCreateUser` callback:
+Accounts.onCreateUser((options, user : any) => {
+    user.profile = options.profile;
+    if (options.service === "google") {
+        // ...
+    } else if (options.service === "github") {
+        // ...
+    }
+    return user;
+}
+```
+
+```typescript
+// client/components/multilogin.tsx
+
+import React from "react"
+import { Meteor } from "meteor/meteor"
+import { useTracker } from 'meteor/react-meteor-data'
+import { OIDC } from "meteor/epfl:accounts-oidc"
+import { Google, GitHub } from "../../imports/authProviders"
+
+function LoginLogoutClicky () {
+    const isLoggedIn = useTracker(() => !! Meteor.userId());
+
+    return isLoggedIn ?
+          <div><a href="#" onClick={() => Meteor.logout()}>Logout</a></div> :
+          <>
+              <div><a href="#" onClick={() => Google.login()}>Log in with Google</a></div>
+              <div><a href="#" onClick={() => GitHub.login()}>Log in with GitHub</a></div>
+          </>;
+}
+```
+
+```typescript
+// settings.json
+{
+    "packages": {
+        "service-configuration": {
+            "google": {
+                // ...
+            },
+            "github": {
+                // ...
+            }
+    }
+}
+```
 
 # Configuration Reference
 

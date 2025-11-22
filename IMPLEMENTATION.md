@@ -100,7 +100,7 @@ The behavior of OpenID-Connect diverges from OAuth's in two fundamental places i
 
 # User-Customizable Behavior
 
-Finally, all the personal information obtained as per the previous paragraph flows into `OIDC.getNewUserData` and `OIDC.getUserServiceData`, which the app author may override. Their out-of-the-box behavior is described in [README.md](./README.md).
+Finally, all the personal information obtained as per the previous paragraph flows into `OIDC.getUserServiceData`, which the app author may override; and the `Accounts.onCreateUser()` callback. Both of these are covered in [README.md](./README.md).
 
 # References
 
