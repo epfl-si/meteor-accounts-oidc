@@ -5,5 +5,18 @@
     "@types/meteor": "^2.9.10",
     "typedoc": "^0.28.14",
     "typedoc-plugin-markdown": "^4.9.0"
+  },
+  "exports": "index.ts",
+  "scripts": {
+    "api": "typedoc"
+  },
+  "typedocOptions": {
+    "plugin": ["typedoc-plugin-markdown"],
+    "router": "module",
+    "excludeInternal": true,
+    "sort": "source-order",
+    "readme": "none",
+    "out": "api",
+    "entryFileName": "API.md"
   }
 }
