@@ -31,7 +31,7 @@ meteor add epfl:accounts-oidc
 
 The goal of this step is to obtain the **client ID**, **client secret** and **OIDC base URL** for use below. Consult the documentation of your IdP to find out how to do that.
 
-The OIDC base URL is the one that returns JSON when you paste it into your browser's URL bar, append `/.well-known/openid-configuration` at the end of it, and press Enter. If your IdP doesn't provide such an auto-configuration JSON document, you will have to use advanced configuration (documented below) to provide each OAuth 2 entry point by hand.
+The OIDC base URL is the one that returns JSON when you paste it into your browser's URL bar, append `/.well-known/openid-configuration` at the end of it, and press Enter. If your IdP doesn't provide such an auto-configuration JSON document, you will have to use advanced configuration (documented below) to provide each REST endpoint by hand.
 
 For security reasons, many OIDC-compliant IdPs, including Keycloak and Entra, want to know in advance (i.e. whitelist) which URLs the user's browser can be redirected to after logging in. *Meteor doesn't let you pick the URL here*; as [documented](https://guide.meteor.com/accounts#oauth-configuration), you need to use `$ROOT_URL/_oauth/oidc` where `$ROOT_URL` is the root URL of the Web app.
 
@@ -111,8 +111,8 @@ collection on the server.
 The default implementation, which will suit most needs,
 
 - matches the `email` field of the `UserInfo` IdP JSON response
-  against the `.services.oidc.id` field of existing users, to avoid
-  creating duplicates;
+  against the `.services.oidc.id` field of existing users, to determine
+  whether a new user needs creating;
 - updates the `.services.oidc.claims` from the claims in the
   [JWT](https://jwt.io/) ID token upon each successful login.
 
@@ -125,7 +125,7 @@ documentation](api/API.md#getuserservicedata).
 Additionally, Meteor's `accounts-base` provides support for setting
 fields when a user is first created. `epfl:accounts-oidc` uses that to
 populate the user's `.profile` field out of the personal information
-present in either the `userInfo` callback results, or the JWT claims.
+present in either the `UserInfo` callback results, or the JWT claims.
 In order to replace this behavior with your own, you must call
 [`Accounts.onCreateuser`](https://docs.meteor.com/api/accounts#AccountsServer-onCreateUser)
 on the server.
@@ -181,7 +181,7 @@ Suppose, for instance, that you want your users to be able to log in
 using either their GitHub account, or their Google account.
 
 If so, the function
-`newOIDCProvider(slug)`](api/API.md#newoidcprovider) should be called
+[`newOIDCProvider(slug)`](api/API.md#newoidcprovider) should be called
 on both client and server. It returns an object that works just like
 `OIDC`, except that it consumes a separate configuration named after
 `slug`. That is, you should re-read “Configure the Meteor app,” above,
@@ -253,14 +253,17 @@ function LoginLogoutClicky () {
 
 # Configuration Reference
 
-| Option name          | Purpose                                                                                                                                                                                | Example value(s)                                                                                 | Default                                                                                               |
-|----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
-| `loginStyle`         | Choose the UX for the login operation in the browser                                                                                                                                   | `"popup"` or `"redirect"`                                                                        | `"popup"`                                                                                             |
-| `scope`              | A list of strings (with IdP-specific meaning) stipulating which personal information to retrieve at login time                                                                         | `"openid email"` or `["openid", "email"]`                                                        | `"openid"`                                                                                            |
-| `loginUrlParameters` | IdP-specific additional query parameters to pass along with the initial browser redirect to the IdP                                                                                    | `{"foo": "bar"}`                                                                                 | `{}`                                                                                                  |
-| `baseUrl`            | The base URL to resolve OpenID-Connect endpoints from                                                                                                                                  | `https://login.microsoftonline.com/aaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeeeeee/v2.0`                  | N/A                                                                                                   |
-| `tokenEndpoint`      | The URL of the [OIDC Token Endpoint](https://openid.net/specs/openid-connect-core-1_0.html#TokenEndpoint)                                                                              | `https://login.microsoftonline.com/aaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeeeeee/oauth2/v2.0/token`     | `token_endpoint` JSON response field at URL: `baseUrl + "/.well-known/openid-configuration"`          |
-| `authorizeEndpoint`  | The URL of the [Authorization Endpoint](https://openid.net/specs/openid-connect-core-1_0.html#AuthorizationEndpoint) (the one that the server calls to finish the OAuth login process) | `https://login.microsoftonline.com/aaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeeeeee/oauth2/v2.0/user_info` | `authorization_endpoint` JSON response field  at URL: `baseUrl + "/.well-known/openid-configuration"` |
-| `userinfoEndpoint`   | The URL of the [UserInfo Endpoint](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo)                                         | `https://login.microsoftonline.com/aaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeeeeee/oauth2/v2.0/user_info` | `userinfo_endpoint` JSON response field at URL: `baseUrl + "/.well-known/openid-configuration"`       |
+| Option name           | Purpose                                                                                                                                                                                       | Example value(s)                                                                                 | Default                                                                                               |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
+| `loginStyle`          | Choose the UX for the login operation in the browser                                                                                                                                          | `"popup"` or `"redirect"`                                                                        | `"popup"`                                                                                             |
+| `scope`               | A list of strings (with IdP-specific meaning) stipulating which personal information to retrieve at login time                                                                                | `"openid email"` or `["openid", "email"]`                                                        | `"openid"`                                                                                            |
+| `clientId`            | The OpenID-Connect Client ID                                                                                                                                                                  | `SomethingThatLooksLikeTheCatWalkedOnYourKeyboard`                                               | N/A                                                                                                   |
+| `secret.clientSecret` | The OpenID-Connect Client Secret. Note that that key is not at the top level like all the others; it is nested inside a `secret` dict, so as not to be transmitted (published) to the client. | `More-C@t-Typ1ng,//butWithL§§tCh^rsMaybe.ItDepends`                                              | N/A                                                                                                      |
+| `loginUrlParameters`  | IdP-specific additional query parameters to pass along with the initial browser redirect to the IdP                                                                                           | `{"prompt": "consent"}`                                                                          | `{}`                                                                                                  |
+| `baseUrl`             | The base URL to resolve OpenID-Connect endpoints from                                                                                                                                         | `https://login.microsoftonline.com/aaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeeeeee/v2.0`                  | N/A                                                                                                   |
+| `tokenEndpoint`       | The URL of the [OIDC Token Endpoint](https://openid.net/specs/openid-connect-core-1_0.html#TokenEndpoint)                                                                                     | `https://login.microsoftonline.com/aaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeeeeee/oauth2/v2.0/token`     | `token_endpoint` JSON response field at URL: `baseUrl + "/.well-known/openid-configuration"`          |
+| `authorizeEndpoint`   | The URL of the [Authorization Endpoint](https://openid.net/specs/openid-connect-core-1_0.html#AuthorizationEndpoint) (the one that the server calls to finish the OAuth login process)        | `https://login.microsoftonline.com/aaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeeeeee/oauth2/v2.0/user_info` | `authorization_endpoint` JSON response field  at URL: `baseUrl + "/.well-known/openid-configuration"` |
+| `userinfoEndpoint`    | The URL of the [UserInfo Endpoint](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo)                                                                                            | `https://login.microsoftonline.com/aaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeeeeee/oauth2/v2.0/user_info` | `userinfo_endpoint` JSON response field at URL: `baseUrl + "/.well-known/openid-configuration"`       |
+| `popupOptions`        | Any options to pass to the popup window, if `loginStyle === "popup"`                                                                                                                          | `{ height: 800, width: 600 }`                                                                    | `{}`                                                                                                  |
 
 See also: [`OIDCConfiguration` in the API docs](api/API.md#oidcconfiguration)
