@@ -11,8 +11,8 @@ _registerOIDCConstructFunction(function newOIDCProviderClient (slug : string) {
   Accounts.registerClientLoginFunction(slug, loginWithOpenIDConnect);
 
   return {
-    login(...args) {
-      Accounts.applyLoginFunction(slug, args);
+    async login (...args) {
+      await Accounts.applyLoginFunction(slug, args);
     }
   };
 

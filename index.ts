@@ -12,11 +12,16 @@ export type UserServiceData = { id: string, [ k : string ] : any };
 export type OIDC = {
   /**
    * Start the login process with the configured OpenID server.
-   * Does not return (but may throw)
    *
    * @locus Client
+   *
+   * @return a promise that resolves (to void) once the popup closes,
+   *         if `loginStyle` is `"popup"`. Never resolves when
+   *         `loginStyle` is `"redirect"`, as the browser will destroy
+   *         the entire JavaScript execution context upon navigating
+   *         away from the Meteor application.
    */
-  login (...args: any[]) : void
+  login (...args: any[]) : Promise<void>
 
   /**
    * What information to store as, or update into, the users's `.service.oidc` field.
