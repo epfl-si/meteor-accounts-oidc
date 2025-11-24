@@ -44,7 +44,7 @@ _registerOIDCConstructFunction(function newOIDCProviderServer (slug) {
   //
   // “Documented” at https://guide.meteor.com/2.9-migration
   //
-  // RTFS at https://github.com/search?q=repo%3Ameteor%2Fmeteor+symbol%3AregisterService+path%3Aoauth_common.js&type=code
+  // RTFS at https://github.com/search?q=repo%3Ameteor%2Fmeteor+symbol%3AregisterService+path%3Aoauth_server.js&type=code
   OAuth.registerService(slug, 2, null, async function(oauthResults) {
     const { id_token, access_token } = await getTokens(config, oauthResults);
 
