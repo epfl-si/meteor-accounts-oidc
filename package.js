@@ -1,7 +1,7 @@
 Package.describe({
   name: "epfl:accounts-oidc",
   summary: "OpenID Connect (OIDC) for Meteor 3.x",
-  version: "0.1.0",
+  version: "0.2.0",
   git: "https://github.com/epfl-si/meteor-accounts-oidc.git"
 });
 
