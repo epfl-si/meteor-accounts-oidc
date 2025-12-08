@@ -160,7 +160,7 @@ your server-side publications, methods etc. per the recommendations of
 [the Meteor documentation](https://guide.meteor.com/security)) to
 achieve a rudimentary, yet effective form of role-based access
 control, or
-[RBAC](https://en.wikipedia.org/wiki/Role-based_access_control).
+[RBAC](https://en.wikipedia.org/wiki/Role-based_access_control). For more sophisticated use cases, consider using [Meteor's built-in `roles` package](https://docs.meteor.com/packages/roles).
 
 
 ### Multiple Providers
