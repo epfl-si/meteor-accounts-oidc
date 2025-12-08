@@ -149,7 +149,7 @@ export async function getGroups () {
 }
 
 export async function ensureMemberOfGroup (groupName) {
-  if ( -1 == (await getGroups()).index(groupName) ) {
+  if (! (await getGroups()).includes(groupName)) {
     throw new Meteor::Error("Unauthorized")
   }
 }
