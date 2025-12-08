@@ -84,7 +84,7 @@ What is less well-known, however, is that [the `meteor.loginServiceConfiguration
 
 ### User synchronization
 
-Meteor's built-in `accounts-base`, `accounts-oauth` and `oauth` packages together provide (somewhat crude) mechanisms for OAuth implementors like `epfl:accounts-tequila` to synchronize data from the IdP into the `Meteor.users` MongoDB collection; as well as (more recent and sophisticated) mechanisms for the application to override the former. Owing to the long history of this feature, and the requirements driven by backward compatibility, the resulting API in Meteor is honestly a bit of a mess.
+Meteor's built-in `accounts-base`, `accounts-oauth` and `oauth` packages together provide (somewhat crude) mechanisms for OAuth implementors like `epfl:accounts-oidc` to synchronize data from the IdP into the `Meteor.users` MongoDB collection; as well as (more recent and sophisticated) mechanisms for the application to override the former. Owing to the long history of this feature, and the requirements driven by backward compatibility, the resulting API in Meteor is honestly a bit of a mess.
 
 The main entry point for OAuth implementors is `OAuth.registerService()`, whose fourth parameter is a calllback that takes the `{ id_token, access_token }` object obtained at the end of the OAuth process (described above) and shall return a `{ serviceData, options }` object (or a `Promise` of same). Later (after a full freeze / thaw cycle on the server, also as described above), these returned structures control Meteor's handling of the `login` method on the server, with the following steps happening in order:
 
@@ -92,7 +92,7 @@ The main entry point for OAuth implementors is `OAuth.registerService()`, whose 
 2. In the case of a new user, Meteor must populate it. By default it just copies `options.profile` into the new user document's `.profile` field.
 3. Finally, Meteor creates resp. updates the `.service.oidc` field in the new resp. existing user's MongoDB document. To do that, it simply copies resp. merges the entire `serviceData` object into `.service.oidc`.
 
-`epfl:accounts-tequila` has little leeway but to pick sensible defaults for its `serviceData` and `options` return values, using data from the IdP (and the email address as the unique key for step 1), as explained in [README.md](./README.md). On the other hand, the application enjoys access to the following callback hooks:
+`epfl:accounts-oidc` has little leeway but to pick sensible defaults for its `serviceData` and `options` return values, using data from the IdP (and the email address as the unique key for step 1), as explained in [README.md](./README.md). On the other hand, the application enjoys access to the following callback hooks:
 
 - [`Accounts.onCreateUser`](https://docs.meteor.com/api/accounts#AccountsServer-onCreateUser), as the name implies, lets the application author override step 2 entirely. It also obtains the `options` data structure mentioned above as a parameter, which gives `epfl:accounts-tequila` the opportunity to provide helpful data besides `options.profile` for `Accounts.onCreateUser` implementors;
 - [`Accounts.setAdditionalFindUserOnExternalLogin`](https://docs.meteor.com/api/accounts#AccountsServer-setAdditionalFindUserOnExternalLogin), again as the name implies, lets the application author override step 1 only in part — That is, the app-provided callback only kicks in in case the MongoDB search turns up nothing.

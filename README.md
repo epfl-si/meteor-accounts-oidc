@@ -99,14 +99,14 @@ function LoginLogoutClicky () {
 
 ### User synchronization
 
-Like all `accounts-*` Meteor packages, `epfl:accounts-tequila` can
+Like all `accounts-*` Meteor packages, `epfl:accounts-oidc` can
 synchronize personal and other information received from the IdP at
 login time into the [`Meteor.users`
 collection](https://docs.meteor.com/api/accounts#Meteor-users) in
 MongoDB. A generally useful default behavior is provided
 out-of-the-box, which the Meteor application may override.
 
-`epfl:accounts-tequila` directs Meteor to implement the following, default behavior:
+`epfl:accounts-oidc` directs Meteor to implement the following, default behavior:
 
 1. Discern whether the user logging in already exists, by searching by `.services.oidc.id` in MongoDB using the user's email address as the search key.
 2. If the search is unsuccessful (meaning that a new user needs to be created), populate the  `.profile` field of new user's MongoDB document with any and all the information present in either the `UserInfo` callback results, or the JWT claims. Here, “personal information” means any field mentioned in [the relevant section](https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims) of the OpenID-Connect spec, excluding “technical“ fields i.e. `sub` and `updated_at`.

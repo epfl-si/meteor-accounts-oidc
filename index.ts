@@ -2,7 +2,7 @@
 export type UserServiceData = { id: string, [ k : string ] : any };
 
 /**
- * The main API for `meteor/epfl:accounts-tequila`
+ * The main API for `meteor/epfl:accounts-oidc`
  *
  * @typeParam Identity The type of the JSON that your IdP's
  *                     `UserInfo` REST call returns.
@@ -115,7 +115,7 @@ export type OIDCServer<Identity = unknown> = Pick<OIDC<Identity>, "getUserServic
 type OIDCConstructFunction = (slug : string) => OIDCClient | OIDCServer;
 
 /**
- * The main entry point for `meteor/epfl:accounts-tequila`.
+ * The main entry point for `meteor/epfl:accounts-oidc`.
  *
  * See documenttaion for member methods in the {@link OIDC} type.
  */
